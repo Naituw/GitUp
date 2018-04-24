@@ -220,7 +220,8 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   BOOL success = NO;
   
   _workspace = [[Workspace alloc] initWithDirectory:url.path];
-  GCLiveRepository * repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:url.path error:outError];
+  NSError * error = NULL;
+  GCLiveRepository * repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:url.path error:&error];
   if (repository) {
     if (repository.bare) {
       if (outError) {
@@ -231,7 +232,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
       success = YES;
     }
   }
-  return success;
+  return YES;// success;
 }
 
 - (void)_setCurrentRepository:(GCLiveRepository *)repository
@@ -576,7 +577,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   // Check for uninitialized submodules
   if (!restored && ![[_repository userInfoForKey:kRepositoryUserInfoKey_SkipSubmoduleCheck] boolValue]) {
     NSError* error;
-    if (![_repository checkAllSubmodulesInitialized:YES error:&error]) {
+    if (_repository && ![_repository checkAllSubmodulesInitialized:YES error:&error]) {
       if ([error.domain isEqualToString:GCErrorDomain] && (error.code == kGCErrorCode_SubmoduleUninitialized)) {
         NSAlert* alert = [NSAlert alertWithMessageText:NSLocalizedString(@"Do you want to initialize submodules?", nil) defaultButton:NSLocalizedString(@"Initialize", nil) alternateButton:NSLocalizedString(@"Cancel", nil) otherButton:nil informativeTextWithFormat:@"One or more submodules in this repository are uninitialized."];
         alert.type = kGIAlertType_Caution;
@@ -1978,9 +1979,9 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
         }
       });
     });
-  } else {
+  }/* else {
     XLOG_DEBUG_UNREACHABLE();  // Not sure how this can happen but it has in the field
-  }
+  }*/
 }
 
 - (IBAction)openInHostingService:(id)sender {
