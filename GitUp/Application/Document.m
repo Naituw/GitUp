@@ -59,7 +59,7 @@
 @interface Document () <NSToolbarDelegate, NSTextFieldDelegate, GCLiveRepositoryDelegate,
                         GIWindowControllerDelegate, GIMapViewControllerDelegate, GISnapshotListViewControllerDelegate, GIUnifiedReflogViewControllerDelegate,
                         GICommitListViewControllerDelegate, GICommitRewriterViewControllerDelegate, GICommitSplitterViewControllerDelegate,
-                        GIConflictResolverViewControllerDelegate>
+                        GIConflictResolverViewControllerDelegate, NSSplitViewDelegate>
 @end
 
 static NSDictionary* _helpPlist = nil;
@@ -272,6 +272,9 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
 }
 
 - (void)windowControllerDidLoadNib:(NSWindowController*)windowController {
+  
+  _windowController.overlayContainerView = self.contentView;
+  
   CGFloat fontSize = _infoTextField2.font.pointSize;
   NSMutableParagraphStyle* style = [[NSMutableParagraphStyle alloc] init];
   style.alignment = NSCenterTextAlignment;
@@ -285,6 +288,12 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   [_mainWindow setToolbar:_toolbar];
   if (_unifiedToolbar) {
     [_mainWindow setTitleVisibility:NSWindowTitleHidden];
+  }
+  NSToolbarItem * firstItem = _toolbar.items.firstObject;
+  if ([firstItem.itemIdentifier isEqualToString:NSToolbarFlexibleSpaceItemIdentifier]) {
+    if ([firstItem respondsToSelector:@selector(setTrackedSplitView:)]) {
+      [firstItem performSelector:@selector(setTrackedSplitView:) withObject:self.workspaceSplitView];
+    }
   }
   _contentView.wantsLayer = YES;
   _leftView.wantsLayer = YES;
@@ -1159,9 +1168,9 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 
 - (NSArray*)toolbarDefaultItemIdentifiers:(NSToolbar*)toolbar {
   if (_unifiedToolbar) {
-    return @[ kToolbarItem_Left, kToolbarItem_Title, kToolbarItem_Right ];
+    return @[ NSToolbarFlexibleSpaceItemIdentifier, kToolbarItem_Left, kToolbarItem_Title, kToolbarItem_Right ];
   }
-  return @[ kToolbarItem_Left, NSToolbarFlexibleSpaceItemIdentifier, kToolbarItem_Right ];
+  return @[ NSToolbarFlexibleSpaceItemIdentifier, kToolbarItem_Left, NSToolbarFlexibleSpaceItemIdentifier, kToolbarItem_Right ];
 }
 
 - (NSArray*)toolbarAllowedItemIdentifiers:(NSToolbar*)toolbar {
@@ -1982,6 +1991,18 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
   [_settingsWindow orderOut:nil];
 
   [_repository setUserInfo:(_indexDiffsButton.state ? @(YES) : @(NO))forKey:kRepositoryUserInfoKey_IndexDiffs];
+}
+
+#pragma mark - Workspace Split View Delegate
+
+- (CGFloat)splitView:(NSSplitView *)splitView constrainSplitPosition:(CGFloat)proposedPosition ofSubviewAt:(NSInteger)dividerIndex
+{
+  if (splitView == _workspaceSplitView) {
+    CGFloat max = MIN(self.mainWindow.frame.size.width / 3, 400);
+    CGFloat min = 100;
+    return MAX(min, MIN(proposedPosition, max));
+  }
+  return proposedPosition;
 }
 
 @end

@@ -40,6 +40,8 @@ typedef NS_ENUM(NSUInteger, GIOverlayStyle) {
 @property(nonatomic, assign) id<GIWindowControllerDelegate> delegate;
 @property(strong) GIWindow* window;  // Redeclare superclass property
 
+@property(strong) NSView* overlayContainerView;
+
 @property(nonatomic, readonly, getter=isOverlayVisible) BOOL overlayVisible;
 - (void)showOverlayWithStyle:(GIOverlayStyle)style format:(NSString*)format, ... NS_FORMAT_FUNCTION(2, 3);
 - (void)showOverlayWithStyle:(GIOverlayStyle)style message:(NSString*)message;

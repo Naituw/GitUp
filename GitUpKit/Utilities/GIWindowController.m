@@ -31,6 +31,7 @@
 #define kOverlayAnimationOutDuration 0.15  // seconds
 
 @interface GIWindowController ()
+@property(nonatomic, assign) BOOL dismissingOverlay;
 @property(nonatomic, strong) IBOutlet GIColorView* overlayView;
 @property(nonatomic, weak) IBOutlet NSTextField* overlayTextField;
 - (GIModalView*)modalViewIfVisible;
@@ -229,10 +230,11 @@ static void _TimerCallBack(CFRunLoopTimerRef timer, void* info) {
   }
 
   if (_overlayView.superview == nil) {
-    NSRect bounds = [self.window.contentView bounds];
+    NSView *contentView = _overlayContainerView ? : self.window.contentView;
+    NSRect bounds = [contentView bounds];
     NSRect frame = _overlayView.frame;
     _overlayView.frame = NSMakeRect(0, bounds.size.height - frame.size.height, bounds.size.width, frame.size.height);
-    [self.window.contentView addSubview:_overlayView];  // Must be above everything else
+    [contentView addSubview:_overlayView];  // Must be above everything else
     _overlayView.hidden = YES;
     [CATransaction flush];
 
@@ -258,11 +260,13 @@ static void _TimerCallBack(CFRunLoopTimerRef timer, void* info) {
     [NSAnimationContext endGrouping];
   }
 
+  _dismissingOverlay = NO;
   CFRunLoopTimerSetNextFireDate(_overlayTimer, CFAbsoluteTimeGetCurrent() + _overlayDelay);
 }
 
 - (void)hideOverlay {
   if (_overlayView.superview) {
+    _dismissingOverlay = YES;
     NSRect frame = _overlayView.frame;
     NSRect newFrame = NSOffsetRect(frame, 0, frame.size.height);
 
@@ -270,6 +274,7 @@ static void _TimerCallBack(CFRunLoopTimerRef timer, void* info) {
     [[NSAnimationContext currentContext] setDuration:kOverlayAnimationOutDuration];
     [[NSAnimationContext currentContext] setTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
     [[NSAnimationContext currentContext] setCompletionHandler:^{
+      _dismissingOverlay = NO;
       [_overlayView removeFromSuperview];
     }];
     [_overlayView.animator setFrame:newFrame];
@@ -294,7 +299,7 @@ static void _TimerCallBack(CFRunLoopTimerRef timer, void* info) {
 }
 
 - (void)mouseExited:(NSEvent*)event {
-  if (event.trackingArea == _area) {
+  if (event.trackingArea == _area && !_dismissingOverlay) {
     CFRunLoopTimerSetNextFireDate(_overlayTimer, CFAbsoluteTimeGetCurrent() + _overlayDelay);
   } else {
     [super mouseExited:event];
