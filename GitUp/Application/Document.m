@@ -17,6 +17,7 @@
 #import "WindowController.h"
 #import "Common.h"
 #import "AppDelegate.h"
+#import "WorkspaceCellView.h"
 
 #import <GitUpKit/XLFacilityMacros.h>
 
@@ -59,7 +60,7 @@
 @interface Document () <NSToolbarDelegate, NSTextFieldDelegate, GCLiveRepositoryDelegate,
                         GIWindowControllerDelegate, GIMapViewControllerDelegate, GISnapshotListViewControllerDelegate, GIUnifiedReflogViewControllerDelegate,
                         GICommitListViewControllerDelegate, GICommitRewriterViewControllerDelegate, GICommitSplitterViewControllerDelegate,
-                        GIConflictResolverViewControllerDelegate, NSSplitViewDelegate>
+                        GIConflictResolverViewControllerDelegate, NSSplitViewDelegate, NSOutlineViewDelegate, NSOutlineViewDataSource>
 @end
 
 static NSDictionary* _helpPlist = nil;
@@ -2003,6 +2004,40 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
     return MAX(min, MIN(proposedPosition, max));
   }
   return proposedPosition;
+}
+
+#pragma mark - Workspace Outline View Delegate & DataSource
+
+- (NSInteger)outlineView:(NSOutlineView *)outlineView numberOfChildrenOfItem:(nullable id)item
+{
+  if (!item) { // root item
+    return 4;
+  }
+  return 0;
+}
+
+- (id)outlineView:(NSOutlineView *)outlineView child:(NSInteger)index ofItem:(nullable id)item
+{
+  return @"123";
+}
+
+- (BOOL)outlineView:(NSOutlineView *)outlineView isItemExpandable:(id)item
+{
+  return NO;
+}
+
+- (CGFloat)outlineView:(NSOutlineView *)outlineView heightOfRowByItem:(id)item
+{
+  return 30;
+}
+
+- (NSTableRowView *)outlineView:(NSOutlineView *)outlineView rowViewForItem:(id)item
+{
+  WorkspaceCellView *result = [outlineView makeViewWithIdentifier:@"WorkspaceCell" owner:self];
+  [result.badgeButton.cell setHighlightsBy:0];
+  result.badgeButton.hidden = NO;
+  result.badgeButton.title = @"42";
+  return result;
 }
 
 @end
