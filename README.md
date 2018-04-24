@@ -3,11 +3,12 @@
 GitUp
 =====
 
-**Work quickly, safely, and without headaches. The Git interface you've been missing all your life has finally arrived.**
+**This fork adds "Workspace" feature to GitUp, let user switch between repositories inside same directory very easy and quickly**
 
-<p align="center">
-<img src="http://i.imgur.com/t6iC9TC.png">
-</p>
+<img src="http://wx3.sinaimg.cn/large/69c30c5fly1fqnzreq51hg20go09xaha.gif">
+
+
+**Work quickly, safely, and without headaches. The Git interface you've been missing all your life has finally arrived.**
 
 Git recently celebrated its 10 years anniversary, but most engineers are still confused by its intricacy (3 of the [top 5 questions of all time](http://stackoverflow.com/questions?sort=votes) on Stack Overflow are Git related). Since Git turns even simple actions into mystifying commands (“git add” to stage versus “git reset HEAD” to unstage anyone?), it’s no surprise users waste time, get frustrated, distract the rest of their team for help, or worse, screw up their repo!
 
