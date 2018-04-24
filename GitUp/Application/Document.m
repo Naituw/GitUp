@@ -220,39 +220,46 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   BOOL success = NO;
   
   _workspace = [[Workspace alloc] initWithDirectory:url.path];
-  _repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:url.path error:outError];
-  if (_repository) {
-    if (_repository.bare) {
+  GCLiveRepository * repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:url.path error:outError];
+  if (repository) {
+    if (repository.bare) {
       if (outError) {
         *outError = MAKE_ERROR(@"Bare repositories are not supported at this time");
       }
     } else {
-#if DEBUG
-      if ([NSEvent modifierFlags] & NSAlternateKeyMask) {
-        [[NSFileManager defaultManager] removeItemAtPath:_repository.privateAppDirectoryPath error:NULL];
-        XLOG_WARNING(@"Resetting private data for repository \"%@\"", _repository.repositoryPath);
-      }
-#endif
-      _repository.delegate = self;
-      _repository.undoManager = self.undoManager;
-      _repository.snapshotsEnabled = YES;
-      if ([NSApp isActive]) {
-        [_repository notifyRepositoryChanged];  // Otherwise -didBecomeActive: will take care of it
-      } else {
-        _repository.automaticSnapshotsEnabled = YES;  // TODO: Is this a good idea?
-      }
-      _repository.diffWhitespaceMode = [[NSUserDefaults standardUserDefaults] integerForKey:kUserDefaultsKey_DiffWhitespaceMode];
-
-//#if DEBUG
-//      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-//        XLOG_DEBUG_CHECK([GCLiveRepository allocatedCount] == [[[NSDocumentController sharedDocumentController] documents] count]);
-//      });
-//#endif
-
+      [self _setCurrentRepository:repository];
       success = YES;
     }
   }
   return success;
+}
+
+- (void)_setCurrentRepository:(GCLiveRepository *)repository
+{
+  if (_repository) {
+    _repository.delegate = nil;
+    _repository.undoManager = nil;
+  }
+  
+  _repository = repository;
+  
+  if (_repository) {
+#if DEBUG
+    if ([NSEvent modifierFlags] & NSAlternateKeyMask) {
+      [[NSFileManager defaultManager] removeItemAtPath:_repository.privateAppDirectoryPath error:NULL];
+      XLOG_WARNING(@"Resetting private data for repository \"%@\"", _repository.repositoryPath);
+    }
+#endif
+    _repository.delegate = self;
+    _repository.undoManager = self.undoManager;
+    _repository.snapshotsEnabled = YES;
+    if ([NSApp isActive]) {
+      [_repository notifyRepositoryChanged];  // Otherwise -didBecomeActive: will take care of it
+    } else {
+      _repository.automaticSnapshotsEnabled = YES;  // TODO: Is this a good idea?
+    }
+    _repository.diffWhitespaceMode = [[NSUserDefaults standardUserDefaults] integerForKey:kUserDefaultsKey_DiffWhitespaceMode];
+  }
 }
 
 - (void)close {
@@ -263,8 +270,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   XLOG_DEBUG_CHECK(_mainWindow);
   [_repository setUserInfo:_mainWindow.stringWithSavedFrame forKey:kRepositoryUserInfoKey_MainWindowFrame];
 
-  _repository.delegate = nil;  // Make sure that if the GCLiveRepository is still around afterwards, it won't call back to the dealloc'ed document
-  _repository = nil;
+  [self _setCurrentRepository:nil];
 }
 
 - (void)makeWindowControllers {
@@ -317,63 +323,77 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
     field.drawsBackground = YES;
     field.backgroundColor = _mainWindow.backgroundColor;
   }
+  
+  [self _reloadViewsWithCurrentRepository];
 
+  [self _setWindowMode:kWindowModeString_Map];
+}
+
+- (void)_reloadViewsWithCurrentRepository
+{
   _mapViewController = [[GIMapViewController alloc] initWithRepository:_repository];
   _mapViewController.delegate = self;
   [_mapControllerView replaceWithView:_mapViewController.view];
+  _mapControllerView = _mapViewController.view;
   _mapView.frame = _mapContainerView.bounds;
+  [_mapView removeFromSuperview];
   [_mapContainerView addSubview:_mapView];
   XLOG_DEBUG_CHECK(_mapContainerView.subviews.firstObject == _mapView);
   [self _updateStatusBar];
-
+  
   _tagsViewController = [[GICommitListViewController alloc] initWithRepository:_repository];
   _tagsViewController.delegate = self;
   _tagsViewController.emptyLabel = NSLocalizedString(@"No Tags", nil);
   [_tagsControllerView replaceWithView:_tagsViewController.view];
-
+  _tagsControllerView = _tagsViewController.view;
+  
   _snapshotListViewController = [[GISnapshotListViewController alloc] initWithRepository:_repository];
   _snapshotListViewController.delegate = self;
   [_snapshotsControllerView replaceWithView:_snapshotListViewController.view];
-
+  _snapshotsControllerView = _snapshotListViewController.view;
+  
   _unifiedReflogViewController = [[GIUnifiedReflogViewController alloc] initWithRepository:_repository];
   _unifiedReflogViewController.delegate = self;
   [_reflogControllerView replaceWithView:_unifiedReflogViewController.view];
-
+  _reflogControllerView = _unifiedReflogViewController.view;
+  
   _ancestorsViewController = [[GICommitListViewController alloc] initWithRepository:_repository];
   _ancestorsViewController.delegate = self;
   [_ancestorsControllerView replaceWithView:_ancestorsViewController.view];
-
+  _ancestorsControllerView = _ancestorsViewController.view;
+  
   _searchResultsViewController = [[GICommitListViewController alloc] initWithRepository:_repository];
   _searchResultsViewController.delegate = self;
   _searchResultsViewController.emptyLabel = NSLocalizedString(@"No Results", nil);
   [_searchControllerView replaceWithView:_searchResultsViewController.view];
-
+  _searchControllerView = _searchResultsViewController.view;
+  
   _quickViewController = [[GIQuickViewController alloc] initWithRepository:_repository];
   NSTabViewItem* quickItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Map_QuickView]];
   quickItem.view = _quickViewController.view;
-
+  
   _diffViewController = [[GIDiffViewController alloc] initWithRepository:_repository];
   NSTabViewItem* diffItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Map_Diff]];
   diffItem.view = _diffViewController.view;
-
+  
   _commitRewriterViewController = [[GICommitRewriterViewController alloc] initWithRepository:_repository];
   _commitRewriterViewController.delegate = self;
   [_rewriteControllerView replaceWithView:_commitRewriterViewController.view];
   NSTabViewItem* rewriteItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Map_Rewrite]];
   rewriteItem.view = _rewriteView;
-
+  
   _commitSplitterViewController = [[GICommitSplitterViewController alloc] initWithRepository:_repository];
   _commitSplitterViewController.delegate = self;
   [_splitControllerView replaceWithView:_commitSplitterViewController.view];
   NSTabViewItem* splitItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Map_Split]];
   splitItem.view = _splitView;
-
+  
   _conflictResolverViewController = [[GIConflictResolverViewController alloc] initWithRepository:_repository];
   _conflictResolverViewController.delegate = self;
   [_resolveControllerView replaceWithView:_conflictResolverViewController.view];
   NSTabViewItem* resolveItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Map_Resolve]];
   resolveItem.view = _resolveView;
-
+  
   if ([[NSUserDefaults standardUserDefaults] boolForKey:kUserDefaultsKey_SimpleCommit]) {
     _commitViewController = [[GISimpleCommitViewController alloc] initWithRepository:_repository];
   } else {
@@ -382,21 +402,21 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   _commitViewController.delegate = self;
   NSTabViewItem* commitItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Commit]];
   commitItem.view = _commitViewController.view;
-
+  
   _stashListViewController = [[GIStashListViewController alloc] initWithRepository:_repository];
   NSTabViewItem* stashesItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Stashes]];
   stashesItem.view = _stashListViewController.view;
-
+  
   _configViewController = [[GIConfigViewController alloc] initWithRepository:_repository];
   NSTabViewItem* configItem = [_mainTabView tabViewItemAtIndex:[_mainTabView indexOfTabViewItemWithIdentifier:kWindowModeString_Map_Config]];
   configItem.view = _configViewController.view;
-
+  
   _hiddenWarningView.layer.backgroundColor = [[NSColor colorWithDeviceRed:0.0 green:0.0 blue:0.0 alpha:0.5] CGColor];
   _hiddenWarningView.layer.cornerRadius = 10.0;
-
+  
   [self _setSearchFieldPlaceholder:NSLocalizedString(@"Preparing Search…", nil)];
   _searchField.enabled = NO;
-
+  
   for (NSMenuItem* item in _showMenu.itemArray) {  // We don't want first responder targets
     if (![item isSeparatorItem]) {
       item.target = _mapViewController;
@@ -404,8 +424,6 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   }
   _pullButton.target = _mapViewController;
   _pushButton.target = _mapViewController;
-
-  [self _setWindowMode:kWindowModeString_Map];
 }
 
 // Override -updateChangeCount: which is trigged by NSUndoManager to do nothing and not mark document as updated
@@ -592,6 +610,15 @@ static inline NSString* _FormatCommitCount(NSNumberFormatter* formatter, NSUInte
     return NSLocalizedString(@"1 commit", nil);
   }
   return [NSString stringWithFormat:NSLocalizedString(@"%@ commits", nil), [formatter stringFromNumber:@(count)]];
+}
+
+- (NSString *)displayName
+{
+  if (_workspaceOutlineView.selectedRow >= 0) {
+    WorkspaceRepo * repo = _workspace.repos[_workspaceOutlineView.selectedRow];
+    return repo.relativePath;
+  }
+  return [super displayName];
 }
 
 - (void)_updateTitleBar {
@@ -2083,7 +2110,13 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 {
   NSOutlineView * outlineView = notification.object;
   WorkspaceRepo * repo = _workspace.repos[outlineView.selectedRow];
-  NSLog(@"%@", repo.relativePath);
+  if (_repository != repo.repository) {
+    _repository.statusMode = kGCLiveRepositoryStatusMode_Normal;
+    [self _setCurrentRepository:repo.repository];
+    _repository.statusMode = kGCLiveRepositoryStatusMode_Disabled;
+    [self _reloadViewsWithCurrentRepository];
+    [self _updateTitleBar];
+  }
 }
 
 @end
