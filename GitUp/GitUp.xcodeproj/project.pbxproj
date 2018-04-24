@@ -10,6 +10,7 @@
 		165C32B61B95739700D2F894 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 165C32B51B95739700D2F894 /* QuartzCore.framework */; };
 		31CD50E3203E2E2800360B3A /* ToolbarItemWrapperView.m in Sources */ = {isa = PBXBuildFile; fileRef = 31CD50E2203E2E2800360B3A /* ToolbarItemWrapperView.m */; };
 		C612351E208F26AE00D6D6AC /* WorkspaceCellView.m in Sources */ = {isa = PBXBuildFile; fileRef = C612351D208F26AE00D6D6AC /* WorkspaceCellView.m */; };
+		C6123521208F2AED00D6D6AC /* Workspace.m in Sources */ = {isa = PBXBuildFile; fileRef = C6123520208F2AED00D6D6AC /* Workspace.m */; };
 		E212A6DE1B92100E00F62B18 /* libiconv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = E212A6DD1B92100E00F62B18 /* libiconv.dylib */; };
 		E21739F71A5080DD00EC6777 /* DocumentController.m in Sources */ = {isa = PBXBuildFile; fileRef = E21739F61A5080DD00EC6777 /* DocumentController.m */; };
 		E21DCAEB1B253847006424E8 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = E21DCAEA1B253847006424E8 /* main.m */; };
@@ -112,6 +113,8 @@
 		31CD50E2203E2E2800360B3A /* ToolbarItemWrapperView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ToolbarItemWrapperView.m; sourceTree = "<group>"; };
 		C612351C208F26AE00D6D6AC /* WorkspaceCellView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WorkspaceCellView.h; sourceTree = "<group>"; };
 		C612351D208F26AE00D6D6AC /* WorkspaceCellView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WorkspaceCellView.m; sourceTree = "<group>"; };
+		C612351F208F2AED00D6D6AC /* Workspace.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Workspace.h; sourceTree = "<group>"; };
+		C6123520208F2AED00D6D6AC /* Workspace.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Workspace.m; sourceTree = "<group>"; };
 		E212A6DD1B92100E00F62B18 /* libiconv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libiconv.dylib; path = usr/lib/libiconv.dylib; sourceTree = SDKROOT; };
 		E21739F51A5080DD00EC6777 /* DocumentController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DocumentController.h; sourceTree = "<group>"; };
 		E21739F61A5080DD00EC6777 /* DocumentController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DocumentController.m; sourceTree = "<group>"; };
@@ -264,6 +267,8 @@
 				E2A5BE6C1A80E560008DD47F /* Common.h */,
 				C612351C208F26AE00D6D6AC /* WorkspaceCellView.h */,
 				C612351D208F26AE00D6D6AC /* WorkspaceCellView.m */,
+				C612351F208F2AED00D6D6AC /* Workspace.h */,
+				C6123520208F2AED00D6D6AC /* Workspace.m */,
 				E2C338B519F8562F00063D95 /* Document.h */,
 				E2C338B619F8562F00063D95 /* Document.m */,
 				E2C338B819F8562F00063D95 /* Document.xib */,
@@ -430,6 +435,7 @@
 				E2E3C9A01D771E7600AA9A62 /* GARawTracker.m in Sources */,
 				E2C338B419F8562F00063D95 /* main.m in Sources */,
 				E2C5672D1A6D98BC00ECFE07 /* WindowController.m in Sources */,
+				C6123521208F2AED00D6D6AC /* Workspace.m in Sources */,
 				E2C338B219F8562F00063D95 /* AppDelegate.m in Sources */,
 				E2C338B719F8562F00063D95 /* Document.m in Sources */,
 				31CD50E3203E2E2800360B3A /* ToolbarItemWrapperView.m in Sources */,

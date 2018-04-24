@@ -18,6 +18,7 @@
 #import "Common.h"
 #import "AppDelegate.h"
 #import "WorkspaceCellView.h"
+#import "Workspace.h"
 
 #import <GitUpKit/XLFacilityMacros.h>
 
@@ -91,6 +92,12 @@ static inline WindowModeID _WindowModeIDFromString(NSString* mode) {
   XLOG_DEBUG_UNREACHABLE();
   return nil;
 }
+
+@interface Document ()
+
+@property (nonatomic, strong) Workspace * workspace;
+
+@end
 
 @implementation Document {
   WindowController* _windowController;
@@ -175,6 +182,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
     [[NSUserDefaults standardUserDefaults] addObserver:self forKeyPath:kUserDefaultsKey_DiffWhitespaceMode options:0 context:(__bridge void*)[Document class]];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didBecomeActive:) name:NSApplicationDidBecomeActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didResignActive:) name:NSApplicationDidResignActiveNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_workspaceRepoUnreadCountUpdate:) name:WorkspaceRepoDidUpdateUnreadCountNotification object:nil];
   }
   return self;
 }
@@ -182,8 +190,9 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
 - (void)dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationDidResignActiveNotification object:nil];
   [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationDidBecomeActiveNotification object:nil];
+  [[NSNotificationCenter defaultCenter] removeObserver:self name:WorkspaceRepoDidUpdateUnreadCountNotification object:nil];
   [[NSUserDefaults standardUserDefaults] removeObserver:self forKeyPath:kUserDefaultsKey_DiffWhitespaceMode context:(__bridge void*)[Document class]];
-
+  
   CFRunLoopTimerInvalidate(_checkTimer);
   CFRelease(_checkTimer);
 
@@ -209,6 +218,8 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
 
 - (BOOL)readFromURL:(NSURL*)url ofType:(NSString*)typeName error:(NSError**)outError {
   BOOL success = NO;
+  
+  _workspace = [[Workspace alloc] initWithDirectory:url.path];
   _repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:url.path error:outError];
   if (_repository) {
     if (_repository.bare) {
@@ -232,11 +243,11 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
       }
       _repository.diffWhitespaceMode = [[NSUserDefaults standardUserDefaults] integerForKey:kUserDefaultsKey_DiffWhitespaceMode];
 
-#if DEBUG
-      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        XLOG_DEBUG_CHECK([GCLiveRepository allocatedCount] == [[[NSDocumentController sharedDocumentController] documents] count]);
-      });
-#endif
+//#if DEBUG
+//      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//        XLOG_DEBUG_CHECK([GCLiveRepository allocatedCount] == [[[NSDocumentController sharedDocumentController] documents] count]);
+//      });
+//#endif
 
       success = YES;
     }
@@ -1994,12 +2005,41 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
   [_repository setUserInfo:(_indexDiffsButton.state ? @(YES) : @(NO))forKey:kRepositoryUserInfoKey_IndexDiffs];
 }
 
+- (void)_workspaceRepoUnreadCountUpdate:(NSNotification *)notification
+{
+  WorkspaceRepo * repo = notification.object;
+  if (!repo) {
+    return;
+  }
+  NSUInteger index = [_workspace.repos indexOfObject:repo];
+  if (index != NSNotFound) {
+    WorkspaceCellView * cellView = [_workspaceOutlineView rowViewAtRow:index makeIfNecessary:NO];
+    if ([cellView isKindOfClass:[WorkspaceCellView class]]) {
+      [self _configureWorkspaceCell:cellView withRepo:repo];
+    }
+  }
+}
+
+- (void)_configureWorkspaceCell:(WorkspaceCellView *)cellView withRepo:(WorkspaceRepo *)repo
+{
+  cellView.textField.stringValue = repo.relativePath;
+  [cellView.badgeButton.cell setHighlightsBy:0];
+  
+  NSUInteger unreadCount = repo.unreadCount;
+  if (unreadCount > 0) {
+    cellView.badgeButton.hidden = NO;
+    cellView.badgeButton.title = [NSString stringWithFormat:@"%lu", unreadCount];
+  } else {
+    cellView.badgeButton.hidden = YES;
+  }
+}
+
 #pragma mark - Workspace Split View Delegate
 
 - (CGFloat)splitView:(NSSplitView *)splitView constrainSplitPosition:(CGFloat)proposedPosition ofSubviewAt:(NSInteger)dividerIndex
 {
   if (splitView == _workspaceSplitView) {
-    CGFloat max = MIN(self.mainWindow.frame.size.width / 3, 400);
+    CGFloat max = MIN(self.mainWindow.frame.size.width / 3, 1000);
     CGFloat min = 100;
     return MAX(min, MIN(proposedPosition, max));
   }
@@ -2011,14 +2051,14 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 - (NSInteger)outlineView:(NSOutlineView *)outlineView numberOfChildrenOfItem:(nullable id)item
 {
   if (!item) { // root item
-    return 4;
+    return _workspace.repos.count;
   }
   return 0;
 }
 
 - (id)outlineView:(NSOutlineView *)outlineView child:(NSInteger)index ofItem:(nullable id)item
 {
-  return @"123";
+  return _workspace.repos[index];
 }
 
 - (BOOL)outlineView:(NSOutlineView *)outlineView isItemExpandable:(id)item
@@ -2033,11 +2073,17 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 
 - (NSTableRowView *)outlineView:(NSOutlineView *)outlineView rowViewForItem:(id)item
 {
+  WorkspaceRepo * repo = item;
   WorkspaceCellView *result = [outlineView makeViewWithIdentifier:@"WorkspaceCell" owner:self];
-  [result.badgeButton.cell setHighlightsBy:0];
-  result.badgeButton.hidden = NO;
-  result.badgeButton.title = @"42";
+  [self _configureWorkspaceCell:result withRepo:repo];
   return result;
+}
+
+- (void)outlineViewSelectionDidChange:(NSNotification *)notification
+{
+  NSOutlineView * outlineView = notification.object;
+  WorkspaceRepo * repo = _workspace.repos[outlineView.selectedRow];
+  NSLog(@"%@", repo.relativePath);
 }
 
 @end

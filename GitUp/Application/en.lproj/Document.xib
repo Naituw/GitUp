@@ -60,6 +60,7 @@
                 <outlet property="toolbar" destination="zqd-ET-8Ln" id="a5y-pm-2pj"/>
                 <outlet property="untrackedButton" destination="YLR-fG-kTA" id="NW6-fp-q4i"/>
                 <outlet property="window" destination="xOd-HO-29H" id="JIz-fz-R2o"/>
+                <outlet property="workspaceOutlineView" destination="64c-PA-Egs" id="0Kb-Yh-Ape"/>
                 <outlet property="workspaceSplitView" destination="8qM-vm-aog" id="1S9-Cr-Cmr"/>
             </connections>
         </customObject>
@@ -82,14 +83,14 @@
                                 <rect key="frame" x="0.0" y="0.0" width="275" height="500"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <subviews>
-                                    <scrollView misplaced="YES" borderType="none" autohidesScrollers="YES" horizontalLineScroll="26" horizontalPageScroll="10" verticalLineScroll="26" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="a5j-dM-PHb">
+                                    <scrollView misplaced="YES" borderType="none" autohidesScrollers="YES" horizontalLineScroll="32" horizontalPageScroll="10" verticalLineScroll="32" verticalPageScroll="10" usesPredominantAxisScrolling="NO" id="a5j-dM-PHb">
                                         <rect key="frame" x="0.0" y="0.0" width="275" height="500"/>
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                         <clipView key="contentView" drawsBackground="NO" id="JTZ-mI-XLF">
                                             <rect key="frame" x="0.0" y="0.0" width="275" height="500"/>
                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                             <subviews>
-                                                <outlineView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" selectionHighlightStyle="sourceList" multipleSelection="NO" autosaveColumns="NO" rowHeight="24" rowSizeStyle="automatic" viewBased="YES" indentationPerLevel="16" outlineTableColumn="xiM-TA-u0G" id="64c-PA-Egs">
+                                                <outlineView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" selectionHighlightStyle="sourceList" multipleSelection="NO" autosaveColumns="NO" rowHeight="30" rowSizeStyle="automatic" viewBased="YES" indentationPerLevel="16" outlineTableColumn="xiM-TA-u0G" id="64c-PA-Egs">
                                                     <rect key="frame" x="0.0" y="0.0" width="275" height="500"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <size key="intercellSpacing" width="3" height="2"/>
@@ -116,7 +117,7 @@
                                                                         <textField identifier="WorkspaceCell" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" misplaced="YES" id="fwQ-il-5FS">
                                                                             <rect key="frame" x="0.0" y="6" width="272" height="17"/>
                                                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
-                                                                            <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="Table View Cell" id="dr1-mr-s0M">
+                                                                            <textFieldCell key="cell" lineBreakMode="truncatingMiddle" sendsActionOnEndEditing="YES" title="Table View Cell" id="dr1-mr-s0M">
                                                                                 <font key="font" metaFont="system"/>
                                                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                                                                 <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
