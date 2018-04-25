@@ -179,7 +179,7 @@ NSString * const WorkspaceRepoDidUpdateUnreadCountNotification = @"WorkspaceRepo
 - (void)_findReposInsideDirectory:(NSString *)directory levels:(NSUInteger)levels each:(void (^)(WorkspaceRepo * ))eachBlock
 {
   GCRepository * repository = [[GCRepository alloc] initWithExistingLocalRepository:directory error:NULL];
-  if (repository) {
+  if (repository && !repository.bare) {
     WorkspaceRepo * repo = [[WorkspaceRepo alloc] initWithWorkspace:self repository:repository];
     if (eachBlock) {
       eachBlock(repo);

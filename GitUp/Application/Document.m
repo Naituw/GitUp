@@ -221,22 +221,9 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
 }
 
 - (BOOL)readFromURL:(NSURL*)url ofType:(NSString*)typeName error:(NSError**)outError {
-  BOOL success = NO;
-  
   _workspace = [[Workspace alloc] initWithDirectory:url.path];
-  NSError * error = NULL;
-  GCLiveRepository * repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:url.path error:&error];
-  if (repository) {
-    if (repository.bare) {
-      if (outError) {
-        *outError = MAKE_ERROR(@"Bare repositories are not supported at this time");
-      }
-    } else {
-      [self _setCurrentRepository:repository];
-      success = YES;
-    }
-  }
-  return YES;// success;
+
+  return _workspace != nil;// success;
 }
 
 - (void)_setCurrentRepository:(GCLiveRepository *)repository
@@ -2068,6 +2055,11 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
   } else {
     [_workspaceOutlineView reloadData];
   }
+  
+  if (repos.count == _workspace.repos.count && _workspaceOutlineView.selectedRow < 0) {
+    [_workspaceOutlineView selectRowIndexes:[NSIndexSet indexSetWithIndex:0] byExtendingSelection:NO];
+  }
+  
   self.workspacePanelExpand = workspace.repos.count > 1;
 }
 
