@@ -114,7 +114,7 @@
                                                                     <rect key="frame" x="1" y="1" width="272" height="30"/>
                                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                                     <subviews>
-                                                                        <textField identifier="WorkspaceCell" verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" misplaced="YES" id="fwQ-il-5FS">
+                                                                        <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" misplaced="YES" id="fwQ-il-5FS">
                                                                             <rect key="frame" x="0.0" y="6" width="272" height="17"/>
                                                                             <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
                                                                             <textFieldCell key="cell" lineBreakMode="truncatingMiddle" sendsActionOnEndEditing="YES" title="Table View Cell" id="dr1-mr-s0M">
@@ -163,61 +163,62 @@
                                 <rect key="frame" x="276" y="0.0" width="724" height="500"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <subviews>
-                                    <tabView drawsBackground="NO" allowsTruncatedLabels="NO" type="noTabsNoBorder" id="8LX-i4-RBG">
-                                        <rect key="frame" x="37" y="48" width="0.0" height="0.0"/>
+                                    <tabView misplaced="YES" drawsBackground="NO" allowsTruncatedLabels="NO" type="noTabsNoBorder" id="8LX-i4-RBG">
+                                        <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                         <font key="font" metaFont="system"/>
                                         <tabViewItems>
                                             <tabViewItem label="Map" identifier="map" id="N3S-ZN-7aj">
                                                 <view key="view" id="KTA-UW-CKM">
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="QuickView" identifier="quickview" id="lZZ-Pi-ftk">
                                                 <view key="view" id="oyq-DX-wtX">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="Diff" identifier="diff" id="Zf6-Lu-ykr">
                                                 <view key="view" id="WCe-UI-kea">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="Rewrite" identifier="rewrite" id="2rq-Yc-FZg" userLabel="Rewrite">
                                                 <view key="view" id="0Om-In-WCJ">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="Split" identifier="split" id="Ix2-LZ-4Bu" userLabel="Split">
                                                 <view key="view" id="eld-gQ-vK9">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="Resolve" identifier="resolve" id="GZi-Cj-7Lj" userLabel="Resolve">
                                                 <view key="view" id="qfF-Zh-xYt">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="Commit" identifier="commit" id="nIS-m1-wSa">
                                                 <view key="view" id="s88-QZ-O0i">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="Stashes" identifier="stashes" id="2be-V6-QZz">
                                                 <view key="view" id="t1Z-eK-4g6">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>
                                             <tabViewItem label="Config" identifier="config" id="UEe-IZ-19Z">
                                                 <view key="view" id="mhf-LA-IQ4">
-                                                    <rect key="frame" x="0.0" y="0.0" width="1000" height="500"/>
+                                                    <rect key="frame" x="0.0" y="0.0" width="724" height="500"/>
                                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                 </view>
                                             </tabViewItem>

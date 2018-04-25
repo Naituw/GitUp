@@ -300,12 +300,18 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   if (_unifiedToolbar) {
     [_mainWindow setTitleVisibility:NSWindowTitleHidden];
   }
+  
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
   NSToolbarItem * firstItem = _toolbar.items.firstObject;
   if ([firstItem.itemIdentifier isEqualToString:NSToolbarFlexibleSpaceItemIdentifier]) {
-    if ([firstItem respondsToSelector:@selector(setTrackedSplitView:)]) {
-      [firstItem performSelector:@selector(setTrackedSplitView:) withObject:self.workspaceSplitView];
+    SEL selector = @selector(setTrackedSplitView:); // Private API
+    if ([firstItem respondsToSelector:selector]) {
+      [firstItem setValue:self.workspaceSplitView forKey:@"trackedSplitView"];
     }
   }
+#pragma clang diagnostic pop
+
   _contentView.wantsLayer = YES;
   _leftView.wantsLayer = YES;
   _titleView.wantsLayer = YES;
@@ -317,7 +323,9 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
     field.backgroundColor = _mainWindow.backgroundColor;
   }
   
-  [self _reloadViewsWithCurrentRepository];
+  if (_repository) {
+    [self _reloadViewsWithCurrentRepository];
+  }
 
   [self _setWindowMode:kWindowModeString_Map];
 }
@@ -2171,6 +2179,9 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 
 - (void)outlineViewSelectionDidChange:(NSNotification *)notification
 {
+  if (notification.object != _workspaceOutlineView) {
+    return;
+  }
   WorkspaceRepo * repo = [self currentSelectedWorkspaceRepo];
   GCLiveRepository * repository = nil;
   if (repo) {
