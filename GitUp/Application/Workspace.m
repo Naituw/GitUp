@@ -69,7 +69,7 @@
 - (void)updateUnreadCount
 {
   NSError * error = nil;
-  GCDiff * diff = [_repository diffWorkingDirectoryWithRepositoryIndex:nil options:kGCDiffOption_IncludeUntracked maxInterHunkLines:0 maxContextLines:3 error:&error];
+  GCDiff * diff = [_repository diffWorkingDirectoryWithHEAD:nil options:kGCDiffOption_FindRenames | kGCDiffOption_IncludeUntracked maxInterHunkLines:0 maxContextLines:3 error:&error];
   self.unreadCount = diff.deltas.count;
 }
 
