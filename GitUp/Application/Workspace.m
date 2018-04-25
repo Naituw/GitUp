@@ -48,6 +48,7 @@
     }
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationActive:) name:NSApplicationDidBecomeActiveNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_repositoryChanged:) name:GCLiveRepositoryStatusDidUpdateNotification object:nil];
     [self updateUnreadCount];
     
     _initialized = YES;
@@ -71,6 +72,14 @@
   NSError * error = nil;
   GCDiff * diff = [_repository diffWorkingDirectoryWithHEAD:nil options:kGCDiffOption_FindRenames | kGCDiffOption_IncludeUntracked maxInterHunkLines:0 maxContextLines:3 error:&error];
   self.unreadCount = diff.deltas.count;
+}
+
+- (void)_repositoryChanged:(NSNotification *)notification
+{
+  GCLiveRepository * repo = notification.object;
+  if ([self.repository.repositoryPath isEqual:repo.repositoryPath]) {
+    [self updateUnreadCount];
+  }
 }
 
 - (void)_applicationActive:(NSNotification *)notification
