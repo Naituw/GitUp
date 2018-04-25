@@ -93,8 +93,10 @@
   [_indexFilesViewController setDeltas:nil usingConflicts:nil];
   [_diffContentsViewController setDeltas:nil usingConflicts:nil];
 
-  XLOG_DEBUG_CHECK(self.repository.statusMode == kGCLiveRepositoryStatusMode_Normal);
-  self.repository.statusMode = kGCLiveRepositoryStatusMode_Disabled;
+  if (self.repository) {
+    XLOG_DEBUG_CHECK(self.repository.statusMode == kGCLiveRepositoryStatusMode_Normal);
+    self.repository.statusMode = kGCLiveRepositoryStatusMode_Disabled;
+  }
 }
 
 - (void)repositoryStatusDidUpdate {

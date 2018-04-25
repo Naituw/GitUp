@@ -53,6 +53,7 @@
 #define kMaxAncestorCommits 1000
 
 #define kMaxProgressRefreshRate 10.0  // Hz
+#define kWorkspaceDividerHidePosition -10
 
 @interface NSWindow (OSX_10_10)
 - (void)setTitleVisibility:(NSWindowTitleVisibility)visibility;
@@ -96,6 +97,7 @@ static inline WindowModeID _WindowModeIDFromString(NSString* mode) {
 @interface Document ()
 
 @property (nonatomic, strong) Workspace * workspace;
+@property (nonatomic, assign) BOOL workspacePanelExpand;
 
 @end
 
@@ -295,7 +297,8 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
 - (void)windowControllerDidLoadNib:(NSWindowController*)windowController {
   
   _windowController.overlayContainerView = self.contentView;
-  
+  [_workspaceSplitView setPosition:kWorkspaceDividerHidePosition ofDividerAtIndex:0];
+
   CGFloat fontSize = _infoTextField2.font.pointSize;
   NSMutableParagraphStyle* style = [[NSMutableParagraphStyle alloc] init];
   style.alignment = NSCenterTextAlignment;
@@ -618,8 +621,8 @@ static inline NSString* _FormatCommitCount(NSNumberFormatter* formatter, NSUInte
 - (NSString *)displayName
 {
   if (_workspaceOutlineView.numberOfRows && _workspaceOutlineView.selectedRow >= 0) {
-    WorkspaceRepo * repo = _workspace.repos[_workspaceOutlineView.selectedRow];
-    return repo.relativePath;
+    WorkspaceRepo * repo = [self currentSelectedWorkspaceRepo];
+    return repo.relativePath ? : @"Unknown";
   }
   return [super displayName];
 }
@@ -2037,6 +2040,20 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 
 #pragma mark - Workspace
 
+- (void)setWorkspacePanelExpand:(BOOL)workspacePanelExpand
+{
+  if (_workspacePanelExpand != workspacePanelExpand) {
+    _workspacePanelExpand = workspacePanelExpand;
+    
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+      [[NSAnimationContext currentContext] setDuration:0.33];
+      [_workspaceSplitView setPosition:workspacePanelExpand ? 270 : kWorkspaceDividerHidePosition ofDividerAtIndex:0];
+    } completionHandler:^{
+      
+    }];
+  }
+}
+
 - (void)_workspaceDidUpdateRepos:(NSNotification *)notification
 {
   Workspace * workspace = notification.object;
@@ -2051,6 +2068,7 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
   } else {
     [_workspaceOutlineView reloadData];
   }
+  self.workspacePanelExpand = workspace.repos.count > 1;
 }
 
 - (void)_workspaceRepoUnreadCountUpdate:(NSNotification *)notification
@@ -2070,16 +2088,25 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 
 - (void)_configureWorkspaceCell:(WorkspaceCellView *)cellView withRepo:(WorkspaceRepo *)repo
 {
-  cellView.textField.stringValue = repo.relativePath;
-  [cellView.badgeButton.cell setHighlightsBy:0];
+  cellView.textField.stringValue = repo.relativePath ? : @"Unknown";
   
   NSUInteger unreadCount = repo.unreadCount;
   if (unreadCount > 0) {
+    [cellView.badgeButton.cell setHighlightsBy:0];
     cellView.badgeButton.hidden = NO;
     cellView.badgeButton.title = [NSString stringWithFormat:@"%lu", unreadCount];
   } else {
     cellView.badgeButton.hidden = YES;
   }
+}
+
+- (WorkspaceRepo *)currentSelectedWorkspaceRepo
+{
+  WorkspaceRepo * repo = nil;
+  if (_workspaceOutlineView.selectedRow < (NSInteger)_workspace.repos.count) {
+    repo = _workspace.repos[_workspaceOutlineView.selectedRow];
+  }
+  return repo;
 }
 
 #pragma mark - Workspace Split View Delegate
@@ -2094,6 +2121,22 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
   return proposedPosition;
 }
 
+- (BOOL)splitView:(NSSplitView *)splitView shouldHideDividerAtIndex:(NSInteger)dividerIndex
+{
+  if (splitView == _workspaceSplitView) {
+    return !_workspacePanelExpand;
+  }
+  return NO;
+}
+
+- (BOOL)splitView:(NSSplitView *)splitView canCollapseSubview:(NSView *)subview
+{
+  if (splitView == _workspaceSplitView && subview == [splitView.subviews firstObject]) {
+    return YES;
+  }
+  return NO;
+}
+
 #pragma mark - Workspace Outline View Delegate & DataSource
 
 - (NSInteger)outlineView:(NSOutlineView *)outlineView numberOfChildrenOfItem:(nullable id)item
@@ -2106,6 +2149,9 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 
 - (id)outlineView:(NSOutlineView *)outlineView child:(NSInteger)index ofItem:(nullable id)item
 {
+  if (index >= (NSInteger)_workspace.repos.count) {
+    return @"Empty";
+  }
   return _workspace.repos[index];
 }
 
@@ -2121,17 +2167,23 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 
 - (NSTableRowView *)outlineView:(NSOutlineView *)outlineView rowViewForItem:(id)item
 {
-  WorkspaceRepo * repo = item;
   WorkspaceCellView *result = [outlineView makeViewWithIdentifier:@"WorkspaceCell" owner:self];
-  [self _configureWorkspaceCell:result withRepo:repo];
+  if ([item isKindOfClass:[WorkspaceRepo class]]) {
+    WorkspaceRepo * repo = item;
+    [self _configureWorkspaceCell:result withRepo:repo];
+  } else {
+    [self _configureWorkspaceCell:result withRepo:nil];
+  }
   return result;
 }
 
 - (void)outlineViewSelectionDidChange:(NSNotification *)notification
 {
-  NSOutlineView * outlineView = notification.object;
-  WorkspaceRepo * repo = _workspace.repos[outlineView.selectedRow];
-  GCLiveRepository * repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:repo.repository.workingDirectoryPath error:NULL];
+  WorkspaceRepo * repo = [self currentSelectedWorkspaceRepo];
+  GCLiveRepository * repository = nil;
+  if (repo) {
+    repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:repo.repository.workingDirectoryPath error:NULL];
+  }
   if (_repository != repository) {
     [self _setCurrentRepository:repository];
     [self _reloadViewsWithCurrentRepository];
