@@ -13,7 +13,7 @@
   BOOL _initialized;
 }
 
-@property (nonatomic, strong) GCLiveRepository * repository;
+@property (nonatomic, strong) GCRepository * repository;
 @property (nonatomic, strong) NSString * rootDirectory;
 @property (nonatomic, assign) NSUInteger unreadCount;
 
@@ -26,12 +26,12 @@
   [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (instancetype)initWithRootDirectory:(NSString *)root repository:(GCLiveRepository *)repository
+- (instancetype)initWithWorkspace:(Workspace *)workspace repository:(GCRepository *)repository
 {
   if ((self = [self init])) {
-    _rootDirectory = root;
+    _workspace = workspace;
+    _rootDirectory = workspace.rootDirectory;
     _repository = repository;
-    _repository.statusMode = kGCLiveRepositoryStatusMode_Normal;
     
     NSString * fullPath = _repository.workingDirectoryPath;
     if ([fullPath hasPrefix:_rootDirectory]) {
@@ -47,7 +47,6 @@
       NSAssert(NO, @"Repo Not Inside Workspace");
     }
     
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_repoChange:) name:GCLiveRepositoryDidChangeNotification object:_repository];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationActive:) name:NSApplicationDidBecomeActiveNotification object:nil];
     [self updateUnreadCount];
     
@@ -69,17 +68,13 @@
 
 - (void)updateUnreadCount
 {
-  self.unreadCount = _repository.workingDirectoryStatus.deltas.count;
-}
-
-- (void)_repoChange:(NSNotification *)notification
-{
-  [self updateUnreadCount];
+  NSError * error = nil;
+  GCDiff * diff = [_repository diffWorkingDirectoryWithRepositoryIndex:nil options:kGCDiffOption_IncludeUntracked maxInterHunkLines:0 maxContextLines:3 error:&error];
+  self.unreadCount = diff.deltas.count;
 }
 
 - (void)_applicationActive:(NSNotification *)notification
 {
-  [_repository notifyWorkingDirectoryChanged];
   [self updateUnreadCount];
 }
 
@@ -88,8 +83,15 @@
 NSString * const WorkspaceRepoDidUpdateUnreadCountNotification = @"WorkspaceRepoDidUpdateUnreadCountNotification";
 
 @interface Workspace ()
+{
+  struct {
+    unsigned int scheduledAppending: 1;
+  } _flags;
+}
 
 @property (nonatomic, strong) NSString * rootDirectory;
+@property (nonatomic, strong) NSMutableArray<WorkspaceRepo *> * repos;
+@property (nonatomic, strong) NSMutableArray<WorkspaceRepo *> * batchAppendRepos;
 
 @end
 
@@ -99,27 +101,57 @@ NSString * const WorkspaceRepoDidUpdateUnreadCountNotification = @"WorkspaceRepo
 {
   if ((self = [self init])) {
     _rootDirectory = directory;
+    _repos = [NSMutableArray array];
+    _batchAppendRepos = [NSMutableArray array];
+    
     [self startLoadingRepos];
   }
   return self;
 }
 
-- (void)startLoadingRepos
+- (void)_foundRepository:(WorkspaceRepo *)repo
 {
-  CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
-  _repos = [self _findReposInsideDirectory:_rootDirectory levels:3];
-  
-  NSLog(@"time: %f", CFAbsoluteTimeGetCurrent() - start);
+  if (repo) {
+    [_batchAppendRepos addObject:repo];
+    if (!_flags.scheduledAppending) {
+      _flags.scheduledAppending = YES;
+      // throttling
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        _flags.scheduledAppending = NO;
+        [self _batchAppendRepos:_batchAppendRepos];
+        [_batchAppendRepos removeAllObjects];
+      });
+    }
+  }
 }
 
-- (NSArray<WorkspaceRepo *> *)_findReposInsideDirectory:(NSString *)directory levels:(NSUInteger)levels
+- (void)_batchAppendRepos:(NSArray<WorkspaceRepo *> *)repos
 {
-  NSMutableArray<WorkspaceRepo *> * repos = [NSMutableArray array];
+  if (repos.count) {
+    [_repos addObjectsFromArray:repos];
+    [[NSNotificationCenter defaultCenter] postNotificationName:WorkspaceDidUpdateReposNotification object:self userInfo:@{WorkspaceNotificationAppendedReposKey: repos}];
+  }
+}
 
-  GCLiveRepository * repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:directory error:NULL];
+- (void)startLoadingRepos
+{
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    [self _findReposInsideDirectory:_rootDirectory levels:3 each:^(WorkspaceRepo * repo) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [self _foundRepository:repo];
+      });
+    }];
+  });
+}
+
+- (void)_findReposInsideDirectory:(NSString *)directory levels:(NSUInteger)levels each:(void (^)(WorkspaceRepo * ))eachBlock
+{
+  GCRepository * repository = [[GCRepository alloc] initWithExistingLocalRepository:directory error:NULL];
   if (repository) {
-    WorkspaceRepo * repo = [[WorkspaceRepo alloc] initWithRootDirectory:_rootDirectory repository:repository];
-    [repos addObject:repo];
+    WorkspaceRepo * repo = [[WorkspaceRepo alloc] initWithWorkspace:self repository:repository];
+    if (eachBlock) {
+      eachBlock(repo);
+    }
   }
   
   levels--;
@@ -129,13 +161,12 @@ NSString * const WorkspaceRepoDidUpdateUnreadCountNotification = @"WorkspaceRepo
       if ([[dir lastPathComponent] hasPrefix:@"."]) {
         continue;
       }
-      [repos addObjectsFromArray:[self _findReposInsideDirectory:[directory stringByAppendingPathComponent:dir] levels:levels]];
+      [self _findReposInsideDirectory:[directory stringByAppendingPathComponent:dir] levels:levels each:eachBlock];
     }
   }
-  
-  return repos;
 }
 
 @end
 
-
+NSString * const WorkspaceDidUpdateReposNotification = @"WorkspaceDidUpdateReposNotification";
+NSString * const WorkspaceNotificationAppendedReposKey = @"WorkspaceNotificationAppendedReposKey";

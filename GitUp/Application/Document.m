@@ -183,6 +183,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didBecomeActive:) name:NSApplicationDidBecomeActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_didResignActive:) name:NSApplicationDidResignActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_workspaceRepoUnreadCountUpdate:) name:WorkspaceRepoDidUpdateUnreadCountNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_workspaceDidUpdateRepos:) name:WorkspaceDidUpdateReposNotification object:nil];
   }
   return self;
 }
@@ -191,6 +192,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationDidResignActiveNotification object:nil];
   [[NSNotificationCenter defaultCenter] removeObserver:self name:NSApplicationDidBecomeActiveNotification object:nil];
   [[NSNotificationCenter defaultCenter] removeObserver:self name:WorkspaceRepoDidUpdateUnreadCountNotification object:nil];
+  [[NSNotificationCenter defaultCenter] removeObserver:self name:WorkspaceDidUpdateReposNotification object:nil];
   [[NSUserDefaults standardUserDefaults] removeObserver:self forKeyPath:kUserDefaultsKey_DiffWhitespaceMode context:(__bridge void*)[Document class]];
   
   CFRunLoopTimerInvalidate(_checkTimer);
@@ -615,7 +617,7 @@ static inline NSString* _FormatCommitCount(NSNumberFormatter* formatter, NSUInte
 
 - (NSString *)displayName
 {
-  if (_workspaceOutlineView.selectedRow >= 0) {
+  if (_workspaceOutlineView.numberOfRows && _workspaceOutlineView.selectedRow >= 0) {
     WorkspaceRepo * repo = _workspace.repos[_workspaceOutlineView.selectedRow];
     return repo.relativePath;
   }
@@ -2033,10 +2035,28 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
   [_repository setUserInfo:(_indexDiffsButton.state ? @(YES) : @(NO))forKey:kRepositoryUserInfoKey_IndexDiffs];
 }
 
+#pragma mark - Workspace
+
+- (void)_workspaceDidUpdateRepos:(NSNotification *)notification
+{
+  Workspace * workspace = notification.object;
+  if (!workspace || workspace != _workspace) {
+    return;
+  }
+  NSArray<WorkspaceRepo *> * repos = notification.userInfo[WorkspaceNotificationAppendedReposKey];
+  if (repos.count) {
+    NSRange range = NSMakeRange(_workspace.repos.count - repos.count, repos.count);
+    NSIndexSet * indexSet = [NSIndexSet indexSetWithIndexesInRange:range];
+    [_workspaceOutlineView insertItemsAtIndexes:indexSet inParent:nil withAnimation:NSTableViewAnimationSlideDown];
+  } else {
+    [_workspaceOutlineView reloadData];
+  }
+}
+
 - (void)_workspaceRepoUnreadCountUpdate:(NSNotification *)notification
 {
   WorkspaceRepo * repo = notification.object;
-  if (!repo) {
+  if (!repo || repo.workspace != _workspace) {
     return;
   }
   NSUInteger index = [_workspace.repos indexOfObject:repo];
@@ -2111,10 +2131,9 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
 {
   NSOutlineView * outlineView = notification.object;
   WorkspaceRepo * repo = _workspace.repos[outlineView.selectedRow];
-  if (_repository != repo.repository) {
-    _repository.statusMode = kGCLiveRepositoryStatusMode_Normal;
-    [self _setCurrentRepository:repo.repository];
-    _repository.statusMode = kGCLiveRepositoryStatusMode_Disabled;
+  GCLiveRepository * repository = [[GCLiveRepository alloc] initWithExistingLocalRepository:repo.repository.workingDirectoryPath error:NULL];
+  if (_repository != repository) {
+    [self _setCurrentRepository:repository];
     [self _reloadViewsWithCurrentRepository];
     [self _updateTitleBar];
   }
