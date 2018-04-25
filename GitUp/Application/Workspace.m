@@ -11,6 +11,7 @@
 @interface WorkspaceRepo ()
 {
   BOOL _initialized;
+  uint64_t _unreadVersion;
 }
 
 @property (nonatomic, strong) GCRepository * repository;
@@ -67,11 +68,33 @@
   }
 }
 
++ (dispatch_queue_t)unreadUpdateQueue
+{
+  static dispatch_queue_t queue = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    queue = dispatch_queue_create("com.gitup.workspace.repounread", DISPATCH_QUEUE_SERIAL);
+  });
+  return queue;
+}
+
 - (void)updateUnreadCount
 {
-  NSError * error = nil;
-  GCDiff * diff = [_repository diffWorkingDirectoryWithHEAD:nil options:kGCDiffOption_FindRenames | kGCDiffOption_IncludeUntracked maxInterHunkLines:0 maxContextLines:3 error:&error];
-  self.unreadCount = diff.deltas.count;
+  _unreadVersion++;
+  uint64_t unreadVersion = _unreadVersion;
+  
+#define RETURN_IF_INTERRUPTED if (_unreadVersion != unreadVersion) {return;}
+  dispatch_async([WorkspaceRepo unreadUpdateQueue], ^{
+    RETURN_IF_INTERRUPTED
+    NSError * error = nil;
+    GCDiff * diff = [_repository diffWorkingDirectoryWithHEAD:nil options:kGCDiffOption_FindRenames | kGCDiffOption_IncludeUntracked maxInterHunkLines:0 maxContextLines:3 error:&error];
+    RETURN_IF_INTERRUPTED
+    dispatch_async(dispatch_get_main_queue(), ^{
+      RETURN_IF_INTERRUPTED
+      self.unreadCount = diff.deltas.count;
+    });
+  });
+#undef RETURN_IF_INTERRUPTED
 }
 
 - (void)_repositoryChanged:(NSNotification *)notification
