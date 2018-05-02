@@ -94,6 +94,39 @@ static inline WindowModeID _WindowModeIDFromString(NSString* mode) {
   return nil;
 }
 
+@interface GCLiveRepository (Indexing)
+
+@property (nonatomic, assign) BOOL indexing;
+@property (nonatomic, assign) BOOL abortIndexing;
+
+@end
+
+#import <objc/runtime.h>
+
+@implementation GCLiveRepository (Indexing)
+
+- (void)setIndexing:(BOOL)indexing
+{
+  objc_setAssociatedObject(self, @selector(indexing), @(indexing), OBJC_ASSOCIATION_RETAIN);
+}
+
+- (BOOL)indexing
+{
+  return [objc_getAssociatedObject(self, @selector(indexing)) boolValue];
+}
+
+- (void)setAbortIndexing:(BOOL)abortIndexing
+{
+  objc_setAssociatedObject(self, @selector(abortIndexing), @(abortIndexing), OBJC_ASSOCIATION_RETAIN);
+}
+
+- (BOOL)abortIndexing
+{
+  return [objc_getAssociatedObject(self, @selector(abortIndexing)) boolValue];
+}
+
+@end
+
 @interface Document ()
 
 @property (nonatomic, strong) Workspace * workspace;
@@ -141,8 +174,6 @@ static inline WindowModeID _WindowModeIDFromString(NSString* mode) {
   NSInteger _helpIndex;
   NSURL* _helpURL;
   BOOL _helpHEADDisabled;
-  BOOL _indexing;
-  BOOL _abortIndexing;
 }
 
 + (void)initialize {
@@ -231,6 +262,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
   if (_repository) {
     _repository.delegate = nil;
     _repository.undoManager = nil;
+    _repository.abortIndexing = YES;
   }
   
   _repository = repository;
@@ -251,6 +283,8 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
       _repository.automaticSnapshotsEnabled = YES;  // TODO: Is this a good idea?
     }
     _repository.diffWhitespaceMode = [[NSUserDefaults standardUserDefaults] integerForKey:kUserDefaultsKey_DiffWhitespaceMode];
+    
+    [self _prepareSearch];
   }
 }
 
@@ -508,13 +542,19 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
 }
 
 - (void)_prepareSearch {
-  _indexing = YES;
-  _abortIndexing = NO;
+  if (!_repository) {
+    return;
+  }
+  _repository.indexing = YES;
+  _repository.abortIndexing = NO;
   [[NSProcessInfo processInfo] disableSuddenTermination];
   NSUInteger totalCount = _repository.history.allCommits.count;
   __block float lastProgress = 0.0;
   __block CFTimeInterval lastTime = 0.0;
-  [_repository prepareSearchInBackground:[[_repository userInfoForKey:kRepositoryUserInfoKey_IndexDiffs] boolValue]
+  
+  GCLiveRepository * repository = _repository;
+  
+  [repository prepareSearchInBackground:[[repository userInfoForKey:kRepositoryUserInfoKey_IndexDiffs] boolValue]
       withProgressHandler:^BOOL(BOOL firstUpdate, NSUInteger addedCommits, NSUInteger removedCommits) {
         if (firstUpdate) {
           float progress = MIN(roundf(1000 * (float)addedCommits / (float)totalCount) / 10, 100.0);
@@ -533,10 +573,10 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
             }
           }
         }
-        return !_abortIndexing;
+        return !repository.abortIndexing;
       }
       completion:^(BOOL success, NSError* error) {
-        if (!_abortIndexing) {  // If indexing has been aborted, this means the document has already been closed, so don't attempt to do *anything*
+        if (!repository.abortIndexing) {  // If indexing has been aborted, this means the document has already been closed, so don't attempt to do *anything*
           if (success) {
             _searchReady = YES;
             [self _setSearchFieldPlaceholder:NSLocalizedString(@"Search Repository…", nil)];
@@ -546,7 +586,7 @@ static void _CheckTimerCallBack(CFRunLoopTimerRef timer, void* info) {
             [self presentError:error];
           }
           [[NSProcessInfo processInfo] enableSuddenTermination];
-          _indexing = NO;
+          repository.indexing = NO;
         }
       }];
 }
@@ -908,7 +948,7 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
     [_windowController showOverlayWithStyle:kGIOverlayStyle_Warning message:NSLocalizedString(@"The repository cannot be closed while a remote operation is in progress", nil)];
     return NO;
   }
-  if (_indexing) {
+  if (_repository.indexing) {
     NSAlert* alert = [NSAlert alertWithMessageText:NSLocalizedString(@"Are you sure you want to close the repository?", nil)
                                      defaultButton:NSLocalizedString(@"Close", nil)
                                    alternateButton:NSLocalizedString(@"Cancel", nil)
@@ -918,7 +958,7 @@ static NSString* _StringFromRepositoryState(GCRepositoryState state) {
     if ([alert runModal] == NSAlertAlternateReturn) {
       return NO;
     }
-    _abortIndexing = YES;
+    _repository.abortIndexing = YES;
   }
   return YES;
 }
